@@ -1,44 +1,20 @@
-import socket, cv2, pickle,struct,imutils
-from flask import Flask
+from flask import Flask, render_template, Response
+from streamer import Streamer
 
 app = Flask(__name__)
 
-@app.route("/")
-def stream():
-    # This code is for the server 
-    # Lets import the libraries
-    import socket, cv2, pickle,struct,imutils
+def gen():
+  streamer = Streamer('178.138.193.180', 13919)
+  streamer.start()
 
-    # Socket Create
-    server_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-    host_name  = socket.gethostname()
-    host_ip = socket.gethostbyname(host_name)
-    print('HOST IP:',host_ip)
-    port = 9999
-    socket_address = (host_ip,port)
+  while True:
+    if streamer.streaming:
+      yield (b'--frame\r\n'b'Content-Type: image/jpeg\r\n\r\n' + streamer.get_jpeg() + b'\r\n\r\n')
 
-    # Socket Bind
-    server_socket.bind(socket_address)
+@app.route('/')
+def index():
+  return render_template('index.html')
 
-    # Socket Listen
-    server_socket.listen(5)
-    print("LISTENING AT:",socket_address)
-
-    # Socket Accept
-    while True:
-        client_socket,addr = server_socket.accept()
-        #print('GOT CONNECTION FROM:',addr)
-        if client_socket:
-            vid = cv2.VideoCapture(0)
-            
-            while(vid.isOpened()):
-                img,frame = vid.read()
-                frame = imutils.resize(frame,width=320)
-                a = pickle.dumps(frame)
-                message = struct.pack("Q",len(a))+a
-                client_socket.sendall(message)
-                
-                cv2.imshow('TRANSMITTING VIDEO',frame)
-                key = cv2.waitKey(1) & 0xFF
-                if key ==ord('q'):
-                    client_socket.close()
+@app.route('/video_feed')
+def video_feed():
+  return Response(gen(), mimetype='multipart/x-mixed-replace; boundary=frame')

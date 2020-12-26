@@ -1,5 +1,1 @@
-Flask>=1.0,<=1.1.2
-sockets
-pickle5
-opencv-python
-imutils
+flask-socketio
